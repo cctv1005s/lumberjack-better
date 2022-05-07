@@ -1,4 +1,4 @@
-module github.com/natefinch/lumberjack
+module github.com/cctv1005s/lumberjack-better
 
 require (
 	github.com/BurntSushi/toml v0.3.1

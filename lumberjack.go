@@ -36,9 +36,8 @@ import (
 )
 
 const (
-	backupTimeFormat = "2006-01-02T15-04-05.000"
-	compressSuffix   = ".gz"
-	defaultMaxSize   = 100
+	compressSuffix = ".gz"
+	defaultMaxSize = 100
 )
 
 // ensure we always implement io.WriteCloser
@@ -106,6 +105,8 @@ type Logger struct {
 	// Compress determines if the rotated log files should be compressed
 	// using gzip. The default is not to perform compression.
 	Compress bool `json:"compress" yaml:"compress"`
+
+	BackupTimeFormat string `json:"backup_format" yaml:"backup_format"`
 
 	size int64
 	file *os.File
@@ -218,7 +219,7 @@ func (l *Logger) openNew() error {
 		// Copy the mode off the old logfile.
 		mode = info.Mode()
 		// move the existing file
-		newname := backupName(name, l.LocalTime)
+		newname := backupName(name, l.LocalTime, l.getBackupTimeFormt())
 		if err := os.Rename(name, newname); err != nil {
 			return fmt.Errorf("can't rename log file: %s", err)
 		}
@@ -241,10 +242,18 @@ func (l *Logger) openNew() error {
 	return nil
 }
 
+func (l *Logger) getBackupTimeFormt() string {
+	if l.BackupTimeFormat == "" {
+		return "2006-01-02 15:04:05.000"
+	}
+
+	return l.BackupTimeFormat
+}
+
 // backupName creates a new filename from the given name, inserting a timestamp
 // between the filename and the extension, using the local time if requested
 // (otherwise UTC).
-func backupName(name string, local bool) string {
+func backupName(name string, local bool, backupTimeFormat string) string {
 	dir := filepath.Dir(name)
 	filename := filepath.Base(name)
 	ext := filepath.Ext(filename)
@@ -438,7 +447,7 @@ func (l *Logger) timeFromName(filename, prefix, ext string) (time.Time, error) {
 		return time.Time{}, errors.New("mismatched extension")
 	}
 	ts := filename[len(prefix) : len(filename)-len(ext)]
-	return time.Parse(backupTimeFormat, ts)
+	return time.Parse(l.getBackupTimeFormt(), ts)
 }
 
 // max returns the maximum size in bytes of log files before rolling.
